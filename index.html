@@ -185,6 +185,7 @@ nav button.active,nav button:hover{color:#fff;border-bottom-color:rgba(255,255,2
 .tl-line.done{background:var(--success);}
 .tl-label{font-size:.62rem;color:var(--mid);margin-top:4px;text-align:center;}
 
+.kpi-card:hover{box-shadow:0 4px 18px rgba(123,31,58,.13);transform:translateY(-2px);}
 .hidden{display:none!important;}
 .alert{padding:10px 14px;border-radius:6px;font-size:.82rem;margin-bottom:14px;}
 .alert-info{background:#eaf4ff;color:#1a5d92;border-left:3px solid #1a5d92;}
@@ -623,6 +624,15 @@ nav button.active,nav button:hover{color:#fff;border-bottom-color:rgba(255,255,2
       <button class="btn-secondary" onclick="closeModal('modal-ct-detail')">Fechar</button>
       <button class="btn-primary" id="ct-pdf-btn" style="width:auto;padding:10px 20px;" onclick="">Gerar PDF</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-kpi-detail">
+  <div class="modal wide lft">
+    <h2 id="kpi-detail-title" style="margin-bottom:4px;"></h2>
+    <p id="kpi-detail-sub" style="font-size:.78rem;color:var(--mid);margin-bottom:16px;"></p>
+    <div id="kpi-detail-body" style="max-height:65vh;overflow-y:auto;"></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-kpi-detail')">Fechar</button></div>
   </div>
 </div>
 
@@ -1791,7 +1801,7 @@ function showCliTab(tab,btn){
   else if(tab==='mensal')     el.innerHTML=tabMensal();
   else if(tab==='vendedoras') el.innerHTML=tabVendedoras();
   else if(tab==='semana')     el.innerHTML=tabSemana();
-  else if(tab==='top')        el.innerHTML=tabTop();
+  else if(tab==='top')        { el.innerHTML=tabTop(); renderTop30('fat'); }
   else if(tab==='constantes') el.innerHTML=tabConstantes();
   else if(tab==='inativos')   el.innerHTML=tabInativos();
   else if(tab==='busca')      el.innerHTML=tabBusca();
@@ -1804,24 +1814,184 @@ function renderKPIs(){
   var perd=CLIENTES.filter(function(c){return c.ds>365;}).length;
   var const_=CLIENTES.filter(function(c){return c.c>AVG_COMPRAS;}).length;
   var kpis=[
-    {i:'💰',l:'Faturamento Total',v:fmtR(M.faturamento_total),s:'Mar/2020–Mai/2026',c:'#7B1F3A'},
-    {i:'🛍️',l:'Vendas Únicas',v:fmtN(M.total_vendas),s:'pedidos registrados',c:'#c4526e'},
-    {i:'👥',l:'Clientes Únicos',v:fmtN(TOTAL_CLI),s:'excl. CONSUMIDOR',c:'#1a6e8e'},
-    {i:'🎫',l:'Ticket Médio/Visita',v:fmtR(M.ticket_medio_venda),s:'por pedido',c:'#2d7a4f'},
-    {i:'🔄',l:'Média de Visitas',v:AVG_COMPRAS.toFixed(1)+'x',s:'por cliente',c:'#6b3fa0'},
-    {i:'⏱️',l:'Intervalo Médio',v:Math.round(M.intervalo_medio_dias)+'d',s:'entre compras',c:'#b85c00'},
-    {i:'⭐',l:'Clientes Fiéis',v:fmtN(const_),s:'>'+AVG_COMPRAS.toFixed(1)+' compras',c:'#e07b39'},
-    {i:'✅',l:'Ativos (30d)',v:fmtN(at30),s:fmtPct(at30,TOTAL_CLI)+' da base',c:'#2d7a4f'},
-    {i:'⚠️',l:'Em Risco',v:fmtN(risco),s:'91–180 dias',c:'#b85c00'},
-    {i:'💀',l:'Perdidos (+1 ano)',v:fmtN(perd),s:fmtPct(perd,TOTAL_CLI)+' da base',c:'#888'},
+    {id:'vendas',   i:'🛍️',l:'Vendas Únicas',      v:fmtN(M.total_vendas),           s:'pedidos registrados', c:'#c4526e'},
+    {id:'clientes', i:'👥',      l:'Clientes Únicos',     v:fmtN(TOTAL_CLI),                s:'excl. CONSUMIDOR',   c:'#1a6e8e'},
+    {id:'ticket',   i:'🎫',      l:'Ticket Médio/Visita', v:fmtR(M.ticket_medio_venda),     s:'por pedido',         c:'#2d7a4f'},
+    {id:'visitas',  i:'🔄',      l:'Média de Visitas',    v:AVG_COMPRAS.toFixed(1)+'x',     s:'por cliente',        c:'#6b3fa0'},
+    {id:'intervalo',i:'⏱️',   l:'Intervalo Médio',     v:Math.round(M.intervalo_medio_dias)+'d', s:'entre compras', c:'#b85c00'},
+    {id:'fieis',    i:'⭐',         l:'Clientes Fiéis',      v:fmtN(const_),                   s:'>'+AVG_COMPRAS.toFixed(1)+' compras', c:'#e07b39'},
+    {id:'ativos',   i:'✅',         l:'Ativos (30d)',              v:fmtN(at30),                     s:fmtPct(at30,TOTAL_CLI)+' da base',    c:'#2d7a4f'},
+    {id:'risco',    i:'⚠️',   l:'Em Risco',                 v:fmtN(risco),                    s:'91–180 dias',   c:'#b85c00'},
+    {id:'perdidos', i:'💀',     l:'Perdidos (+1 ano)',         v:fmtN(perd),                     s:fmtPct(perd,TOTAL_CLI)+' da base',    c:'#888'},
   ];
   document.getElementById('kpi-grid').innerHTML=kpis.map(function(k){
-    return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;border-top:3px solid '+k.c+';">'+
+    return '<div data-kid="'+k.id+'" onclick="openKpiDetail(this.dataset.kid)" class="kpi-card" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;border-top:3px solid '+k.c+';cursor:pointer;transition:box-shadow .18s,transform .18s;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
       '<div style="font-size:1.2rem;">'+k.i+'</div>'+
+      '<div style="font-size:.65rem;color:var(--ruby);letter-spacing:.04em;opacity:.7;">ver mais ›</div></div>'+
       '<div style="font-family:\"Playfair Display\",serif;font-size:1.15rem;font-weight:700;color:'+k.c+';margin:2px 0;">'+k.v+'</div>'+
       '<div style="font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);">'+k.l+'</div>'+
       '<div style="font-size:.68rem;color:#bbb;">'+k.s+'</div></div>';
   }).join('');
+}
+
+function openKpiDetail(id){
+  var title='', sub='', body='';
+  var color=function(ds){return ds<=30?'#2d7a4f':ds<=90?'#1a6e8e':ds<=180?'#b85c00':ds<=365?'#c0392b':'#888';};
+  var tbl=function(thead,rows){
+    return '<div style="overflow-x:auto;"><table class="report-table"><thead>'+thead+'</thead><tbody>'+rows+'</tbody></table></div>';
+  };
+  var clienteRow=function(c,i){
+    return '<tr><td style="text-align:center;font-size:.8rem;">'+(i+1)+'</td>'+
+      '<td><strong>'+c.n+'</strong></td>'+
+      '<td>'+fmtR(c.t)+'</td>'+
+      '<td style="text-align:center;">'+c.c+'x</td>'+
+      '<td>'+fmtR(c.tk)+'</td>'+
+      '<td style="color:'+color(c.ds)+';font-weight:700;">'+c.ds+'d</td>'+
+      '<td><span class="badge '+tier(c.ds).cls+'">'+tier(c.ds).l+'</span></td></tr>';
+  };
+  var thead6='<tr><th>#</th><th>Cliente</th><th>Total Gasto</th><th>Visitas</th><th>Ticket Médio</th><th>Recência</th><th>Status</th></tr>';
+
+  if(id==='vendas'){
+    title='🛍️ Vendas Únicas';
+    sub=fmtN(M.total_vendas)+' pedidos registrados na base';
+    var avg=M.ticket_medio_venda;
+    var acima=CLIENTES.filter(function(c){return c.tk>avg;});
+    var abaixo=CLIENTES.filter(function(c){return c.tk<=avg;});
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">📊<br><strong style="font-size:1.3rem;">'+fmtN(M.total_vendas)+'</strong><br><small>Total de vendas</small></div>'+
+      '<div class="alert alert-success" style="flex:1;min-width:130px;text-align:center;">🎫<br><strong style="font-size:1.3rem;">'+fmtR(avg)+'</strong><br><small>Ticket médio</small></div>'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">⭐<br><strong style="font-size:1.3rem;">'+fmtN(acima.length)+'</strong><br><small>Clientes acima<br>do ticket médio</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">⬇️<br><strong style="font-size:1.3rem;">'+fmtN(abaixo.length)+'</strong><br><small>Clientes abaixo<br>do ticket médio</small></div>'+
+      '</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Top 20 clientes com maior ticket médio</h4>'+
+      tbl(thead6, [].concat(CLIENTES).sort(function(a,b){return b.tk-a.tk;}).slice(0,20).map(clienteRow).join(''));
+  }
+  else if(id==='clientes'){
+    title='👥 Clientes Únicos';
+    sub=fmtN(TOTAL_CLI)+' clientes identificados (excl. CONSUMIDOR)';
+    var novos=CLIENTES.filter(function(c){return c.c===1;});
+    var recorrentes=CLIENTES.filter(function(c){return c.c>1;});
+    var ativos90=CLIENTES.filter(function(c){return c.ds<=90;});
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">👥<br><strong style="font-size:1.3rem;">'+fmtN(TOTAL_CLI)+'</strong><br><small>Total de clientes</small></div>'+
+      '<div class="alert alert-success" style="flex:1;min-width:130px;text-align:center;">🔄<br><strong style="font-size:1.3rem;">'+fmtN(recorrentes.length)+'</strong><br><small>Recorrentes<br>('+fmtPct(recorrentes.length,TOTAL_CLI)+')</small></div>'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">🆕<br><strong style="font-size:1.3rem;">'+fmtN(novos.length)+'</strong><br><small>Compraram 1x<br>('+fmtPct(novos.length,TOTAL_CLI)+')</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">✅<br><strong style="font-size:1.3rem;">'+fmtN(ativos90.length)+'</strong><br><small>Ativos (≤90d)<br>('+fmtPct(ativos90.length,TOTAL_CLI)+')</small></div>'+
+      '</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Top 20 clientes por valor total gasto</h4>'+
+      tbl(thead6, CLIENTES.slice(0,20).map(clienteRow).join(''));
+  }
+  else if(id==='ticket'){
+    title='🎫 Ticket Médio por Visita';
+    sub='Média de '+fmtR(M.ticket_medio_venda)+' por pedido';
+    var faixas=[
+      {l:'Até R$50',   min:0,   max:50},
+      {l:'R$51–100',   min:51,  max:100},
+      {l:'R$101–200',  min:101, max:200},
+      {l:'R$201–500',  min:201, max:500},
+      {l:'Acima R$500',     min:501, max:Infinity},
+    ];
+    var distRows=faixas.map(function(f){
+      var n=CLIENTES.filter(function(c){return c.tk>=f.min&&c.tk<=f.max;}).length;
+      return '<tr><td>'+f.l+'</td><td style="text-align:center;">'+fmtN(n)+'</td><td>'+fmtPct(n,TOTAL_CLI)+'</td></tr>';
+    }).join('');
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-success" style="flex:1;min-width:140px;text-align:center;">🎫<br><strong style="font-size:1.3rem;">'+fmtR(M.ticket_medio_venda)+'</strong><br><small>Ticket médio geral</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:140px;text-align:center;">⭐<br><strong style="font-size:1.3rem;">'+fmtR(CLIENTES[0]?CLIENTES[0].tk:0)+'</strong><br><small>Maior ticket médio</small></div>'+
+      '</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Distribuição por faixa de ticket</h4>'+
+      tbl('<tr><th>Faixa</th><th>Clientes</th><th>% da base</th></tr>', distRows)+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin:16px 0 8px;">Top 20 por ticket médio mais alto</h4>'+
+      tbl(thead6, [].concat(CLIENTES).sort(function(a,b){return b.tk-a.tk;}).slice(0,20).map(clienteRow).join(''));
+  }
+  else if(id==='visitas'){
+    title='🔄 Média de Visitas';
+    sub='Média de '+AVG_COMPRAS.toFixed(1)+' compras por cliente';
+    var top=CLIENTES.filter(function(c){return c.c>=10;});
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">🔄<br><strong style="font-size:1.3rem;">'+AVG_COMPRAS.toFixed(1)+'x</strong><br><small>Média geral</small></div>'+
+      '<div class="alert alert-success" style="flex:1;min-width:130px;text-align:center;">🥇<br><strong style="font-size:1.3rem;">'+fmtN(CLIENTES[0]?CLIENTES[0].c:0)+'x</strong><br><small>Recorde de visitas</small></div>'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">⭐<br><strong style="font-size:1.3rem;">'+fmtN(top.length)+'</strong><br><small>Clientes com<br>10+ visitas</small></div>'+
+      '</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Top 30 clientes que mais visitaram a loja</h4>'+
+      tbl(thead6, [].concat(CLIENTES).sort(function(a,b){return b.c-a.c;}).slice(0,30).map(clienteRow).join(''));
+  }
+  else if(id==='intervalo'){
+    title='⏱️ Intervalo Médio entre Compras';
+    sub='Média de '+Math.round(M.intervalo_medio_dias)+' dias entre visitas';
+    var rapidos=CLIENTES.filter(function(c){return c.iv&&c.iv<=30;});
+    var mensais=CLIENTES.filter(function(c){return c.iv&&c.iv>30&&c.iv<=60;});
+    var trimestrais=CLIENTES.filter(function(c){return c.iv&&c.iv>60&&c.iv<=120;});
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-success" style="flex:1;min-width:130px;text-align:center;">⚡<br><strong style="font-size:1.3rem;">'+fmtN(rapidos.length)+'</strong><br><small>Retornam em ≤30d</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">📅<br><strong style="font-size:1.3rem;">'+fmtN(mensais.length)+'</strong><br><small>Mensais (31–60d)</small></div>'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">⏳<br><strong style="font-size:1.3rem;">'+fmtN(trimestrais.length)+'</strong><br><small>Trimestrais (61–120d)</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">⏱️<br><strong style="font-size:1.3rem;">'+Math.round(M.intervalo_medio_dias)+'d</strong><br><small>Intervalo médio geral</small></div>'+
+      '</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Top 20 clientes com menor intervalo (mais freqüentes)</h4>'+
+      tbl(thead6, [].concat(CLIENTES).filter(function(c){return c.iv;}).sort(function(a,b){return a.iv-b.iv;}).slice(0,20).map(clienteRow).join(''));
+  }
+  else if(id==='fieis'){
+    title='⭐ Clientes Fiéis';
+    sub='Clientes com mais de '+AVG_COMPRAS.toFixed(1)+' compras (acima da média)';
+    var fieis=CLIENTES.filter(function(c){return c.c>AVG_COMPRAS;});
+    var fieisAtivos=fieis.filter(function(c){return c.ds<=90;});
+    var fieisRisco=fieis.filter(function(c){return c.ds>90;});
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-success" style="flex:1;min-width:130px;text-align:center;">⭐<br><strong style="font-size:1.3rem;">'+fmtN(fieis.length)+'</strong><br><small>Total fiéis</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">🟢<br><strong style="font-size:1.3rem;">'+fmtN(fieisAtivos.length)+'</strong><br><small>Ativos (≤90d)</small></div>'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">⚠️<br><strong style="font-size:1.3rem;">'+fmtN(fieisRisco.length)+'</strong><br><small>Em risco / inativos<br>PRIORIDADE</small></div>'+
+      '</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Clientes fiéis em risco (prioridade de reativação)</h4>'+
+      tbl(thead6, fieisRisco.sort(function(a,b){return b.t-a.t;}).slice(0,30).map(clienteRow).join(''))+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin:16px 0 8px;">Clientes fiéis ativos</h4>'+
+      tbl(thead6, fieisAtivos.sort(function(a,b){return b.t-a.t;}).slice(0,20).map(clienteRow).join(''));
+  }
+  else if(id==='ativos'){
+    title='✅ Clientes Ativos (30d)';
+    sub='Clientes que compraram nos últimos 30 dias';
+    var ativos=CLIENTES.filter(function(c){return c.ds<=30;});
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-success" style="flex:1;min-width:130px;text-align:center;">✅<br><strong style="font-size:1.3rem;">'+fmtN(ativos.length)+'</strong><br><small>Ativos no período</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">💰<br><strong style="font-size:1.3rem;">'+fmtR(ativos.reduce(function(a,c){return a+c.t;},0))+'</strong><br><small>Faturamento total<br>desse grupo</small></div>'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">🎫<br><strong style="font-size:1.3rem;">'+fmtR(ativos.length?ativos.reduce(function(a,c){return a+c.t;},0)/ativos.length:0)+'</strong><br><small>Ticket médio<br>do grupo</small></div>'+
+      '</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Todos os clientes ativos (30d)</h4>'+
+      tbl(thead6, ativos.sort(function(a,b){return b.t-a.t;}).map(clienteRow).join(''));
+  }
+  else if(id==='risco'){
+    title='⚠️ Clientes em Risco';
+    sub='Clientes entre 91 e 180 dias sem comprar';
+    var emRisco=CLIENTES.filter(function(c){return c.ds>90&&c.ds<=180;}).sort(function(a,b){return b.t-a.t;});
+    var potencial=emRisco.reduce(function(a,c){return a+c.t;},0);
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">⚠️<br><strong style="font-size:1.3rem;">'+fmtN(emRisco.length)+'</strong><br><small>Clientes em risco</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">💰<br><strong style="font-size:1.3rem;">'+fmtR(potencial)+'</strong><br><small>Faturamento histórico<br>desse grupo</small></div>'+
+      '<div class="alert alert-success" style="flex:1;min-width:130px;text-align:center;">💬<br><strong style="font-size:1.3rem;">'+fmtR(emRisco.length?potencial/emRisco.length:0)+'</strong><br><small>Gasto médio<br>por cliente</small></div>'+
+      '</div>'+
+      '<div class="alert alert-success" style="margin-bottom:16px;">💡 <strong>Ação recomendada:</strong> WhatsApp personalizado com novidade ou 10% off. Esses clientes ainda têm vínculo recente com a loja.</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Lista completa — ordenada por maior valor histórico</h4>'+
+      tbl(thead6, emRisco.map(clienteRow).join(''));
+  }
+  else if(id==='perdidos'){
+    title='💀 Clientes Perdidos (+1 ano)';
+    sub='Clientes sem comprar há mais de 365 dias';
+    var perdidos=CLIENTES.filter(function(c){return c.ds>365;}).sort(function(a,b){return b.t-a.t;});
+    var potencial2=perdidos.reduce(function(a,c){return a+c.t;},0);
+    body='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+      '<div class="alert alert-danger" style="flex:1;min-width:130px;text-align:center;">💀<br><strong style="font-size:1.3rem;">'+fmtN(perdidos.length)+'</strong><br><small>Clientes perdidos</small></div>'+
+      '<div class="alert alert-info" style="flex:1;min-width:130px;text-align:center;">💰<br><strong style="font-size:1.3rem;">'+fmtR(potencial2)+'</strong><br><small>Faturamento histórico<br>desse grupo</small></div>'+
+      '<div class="alert alert-warn" style="flex:1;min-width:130px;text-align:center;">📅<br><strong style="font-size:1.3rem;">'+fmtR(perdidos.length?potencial2/perdidos.length:0)+'</strong><br><small>Gasto médio<br>por cliente</small></div>'+
+      '</div>'+
+      '<div class="alert alert-warn" style="margin-bottom:16px;">💡 <strong>Estratégia:</strong> Campanha agressiva de reativação (“Sentimos sua falta!” + 15% off) para os de maior valor histórico.</div>'+
+      '<h4 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:8px;">Lista completa — ordenada por maior valor histórico</h4>'+
+      tbl(thead6, perdidos.map(clienteRow).join(''));
+  }
+  document.getElementById('kpi-detail-title').textContent=title;
+  document.getElementById('kpi-detail-sub').textContent=sub;
+  document.getElementById('kpi-detail-body').innerHTML=body;
+  document.getElementById('modal-kpi-detail').classList.add('open');
 }
 
 // ── RECÊNCIA ──
@@ -1958,20 +2128,6 @@ function tabSemana(){
 
 // ── TOP CLIENTES ──
 function tabTop(){
-  var top30=CLIENTES.slice(0,30);
-  var color=function(ds){return ds<=30?'#2d7a4f':ds<=90?'#1a6e8e':ds<=180?'#b85c00':ds<=365?'#c0392b':'#888';};
-  var rows=top30.map(function(c,i){
-    var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-    return '<tr>'+
-      '<td style="text-align:center;font-size:.82rem;">'+medal+'</td>'+
-      '<td><strong>'+c.n+'</strong></td>'+
-      '<td style="font-weight:700;color:#7B1F3A;">'+fmtR(c.t)+'</td>'+
-      '<td style="text-align:center;">'+c.c+'x</td>'+
-      '<td>'+fmtR(c.tk)+'</td>'+
-      '<td style="color:'+color(c.ds)+';font-weight:700;">'+c.ds+'d</td>'+
-      '<td><span class="badge '+tier(c.ds).cls+'">'+tier(c.ds).l+'</span></td></tr>';
-  }).join('');
-  // Distribution
   var faixas=[
     ['1 compra',CLIENTES.filter(function(c){return c.c===1;}).length],
     ['2–4 compras',CLIENTES.filter(function(c){return c.c>=2&&c.c<=4;}).length],
@@ -1987,15 +2143,83 @@ function tabTop(){
       '<div style="width:'+(f[1]/maxF2*100).toFixed(1)+'%;background:#7B1F3A;height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px;">'+
       '<span style="font-size:.72rem;color:#fff;font-weight:700;">'+fmtN(f[1])+'</span></div></div></div>';
   }).join('');
-  return '<h3>🏆 Top 30 Clientes por Faturamento</h3>'+
-    '<div style="overflow-x:auto;margin-bottom:24px;"><table class="report-table">'+
-    '<thead><tr><th>#</th><th>Cliente</th><th>Total Gasto</th><th>Visitas</th><th>Ticket Médio</th><th>Recência</th><th>Status</th></tr></thead>'+
-    '<tbody>'+rows+'</tbody></table></div>'+
-    '<h3 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:12px;">📊 Distribuição por Frequência de Compra</h3>'+
+  var btnStyle='padding:7px 18px;border-radius:6px;border:1.5px solid var(--ruby);font-family:Lato,sans-serif;font-size:.8rem;cursor:pointer;transition:all .2s;';
+  var btnOn=btnStyle+'background:var(--ruby);color:#fff;';
+  var btnOff=btnStyle+'background:#fff;color:var(--ruby);';
+  return '<h3>🏆 Top Clientes</h3>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'+
+    '<button id="top-btn-fat" data-modo="fat" onclick="renderTop30(this.dataset.modo)" style="'+btnOn+'">💰 Por Faturamento</button>'+
+    '<button id="top-btn-vis" data-modo="vis" onclick="renderTop30(this.dataset.modo)" style="'+btnOff+'">🔁 Por Visitas</button>'+
+    '<button id="top-btn-st" data-modo="st" onclick="renderTop30(this.dataset.modo)" style="'+btnOff+'">🚦 Por Status</button>'+
+    '</div>'+
+    '<div id="top30-filter-st" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--cream);border-radius:8px;">'+
+    '<span style="font-size:.78rem;color:var(--mid);align-self:center;font-weight:700;">Filtrar:</span>'+
+    '<label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer;"><input type="checkbox" value="risco" onchange="filterTop30Status()" checked> ⚠️ Em Risco (91–180d)</label>'+
+    '<label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer;"><input type="checkbox" value="inativo" onchange="filterTop30Status()" checked> 🔴 Inativos (181–365d)</label>'+
+    '<label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer;"><input type="checkbox" value="perdido" onchange="filterTop30Status()" checked> 💀 Perdidos (+365d)</label>'+
+    '<span id="top30-st-count" style="font-size:.78rem;color:var(--mid);align-self:center;margin-left:auto;"></span>'+
+    '</div>'+
+    '<div id="top30-table"></div>'+
+    '<h3 style="font-family:Playfair Display,serif;color:var(--ruby);margin-bottom:12px;margin-top:8px;">📊 Distribuição por Frequência de Compra</h3>'+
     faixaBars+
     '<p style="font-size:.82rem;color:var(--mid);margin-top:12px;">'+
     '💡 <strong>'+fmtPct(faixas[0][1],TOTAL_CLI)+'</strong> dos clientes compraram apenas 1 vez. '+
     'Estratégia de segunda compra é essencial para aumentar o LTV médio.</p>';
+}
+
+function renderTop30(modo){
+  var btns={fat:'top-btn-fat',vis:'top-btn-vis',st:'top-btn-st'};
+  var baseStyle='padding:7px 18px;border-radius:6px;border:1.5px solid var(--ruby);font-family:Lato,sans-serif;font-size:.8rem;cursor:pointer;transition:all .2s;';
+  Object.keys(btns).forEach(function(k){
+    var btn=document.getElementById(btns[k]);
+    if(!btn) return;
+    if(k===modo){btn.style.background='var(--ruby)';btn.style.color='#fff';}
+    else{btn.style.background='#fff';btn.style.color='var(--ruby)';}
+  });
+  var filterBox=document.getElementById('top30-filter-st');
+  if(filterBox) filterBox.style.display=modo==='st'?'flex':'none';
+  if(modo==='st'){ filterTop30Status(); return; }
+  var sorted=modo==='fat'
+    ? [].concat(CLIENTES).sort(function(a,b){return b.t-a.t;}).slice(0,30)
+    : [].concat(CLIENTES).sort(function(a,b){return b.c-a.c;}).slice(0,30);
+  renderTop30Table(sorted, modo);
+}
+
+function filterTop30Status(){
+  var checks=document.querySelectorAll('#top30-filter-st input[type=checkbox]');
+  var active=[];
+  checks.forEach(function(cb){if(cb.checked) active.push(cb.value);});
+  var filtered=CLIENTES.filter(function(c){
+    if(active.indexOf('risco')>=0 && c.ds>90 && c.ds<=180) return true;
+    if(active.indexOf('inativo')>=0 && c.ds>180 && c.ds<=365) return true;
+    if(active.indexOf('perdido')>=0 && c.ds>365) return true;
+    return false;
+  }).sort(function(a,b){return b.t-a.t;});
+  var countEl=document.getElementById('top30-st-count');
+  if(countEl) countEl.textContent=fmtN(filtered.length)+' cliente(s) encontrado(s)';
+  renderTop30Table(filtered.slice(0,50), 'st');
+}
+
+function renderTop30Table(lista, modo){
+  var color=function(ds){return ds<=30?'#2d7a4f':ds<=90?'#1a6e8e':ds<=180?'#b85c00':ds<=365?'#c0392b':'#888';};
+  var rows=lista.map(function(c,i){
+    var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    var destFat=modo==='fat'?'font-weight:700;color:#7B1F3A;':'';
+    var destVis=modo==='vis'?'font-weight:700;color:#7B1F3A;':'';
+    return '<tr>'+
+      '<td style="text-align:center;font-size:.82rem;">'+medal+'</td>'+
+      '<td><strong>'+c.n+'</strong></td>'+
+      '<td style="'+destFat+'">'+fmtR(c.t)+'</td>'+
+      '<td style="text-align:center;'+destVis+'">'+c.c+'x</td>'+
+      '<td>'+fmtR(c.tk)+'</td>'+
+      '<td style="color:'+color(c.ds)+';font-weight:700;">'+c.ds+'d</td>'+
+      '<td><span class="badge '+tier(c.ds).cls+'">'+tier(c.ds).l+'</span></td></tr>';
+  }).join('');
+  if(!rows) rows='<tr><td colspan="7" style="text-align:center;color:var(--mid);padding:20px;">Nenhum cliente encontrado com os filtros selecionados.</td></tr>';
+  var el=document.getElementById('top30-table');
+  if(el) el.innerHTML='<div style="overflow-x:auto;margin-bottom:24px;"><table class="report-table">'+
+    '<thead><tr><th>#</th><th>Cliente</th><th>Total Gasto</th><th>Visitas</th><th>Ticket Médio</th><th>Recência</th><th>Status</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
 }
 
 // ── CLIENTES CONSTANTES ──

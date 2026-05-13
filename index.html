@@ -2075,7 +2075,7 @@ function tabBusca(){
     '<div class="form-group" style="flex:2;min-width:200px;margin-bottom:0;"><label>Nome do Cliente</label>'+
     '<input type="text" id="cli-q" placeholder="Ex: Maria Silva..." oninput="searchClientes(this.value)" style="font-size:.95rem;"/></div>'+
     '<div class="form-group" style="flex:1;min-width:140px;margin-bottom:0;"><label>Filtrar por status</label>'+
-    '<select id="cli-filter" onchange="searchClientes(document.getElementById('cli-q').value)">'+
+    "<select id=\"cli-filter\" onchange=\"searchClientes(document.getElementById('cli-q').value)\">"+
     '<option value="">Todos</option><option value="0">Ativo recente (≤30d)</option>'+
     '<option value="1">Ativo (≤90d)</option><option value="2">Em risco</option>'+
     '<option value="3">Inativo</option><option value="4">Perdido</option></select></div></div>'+
